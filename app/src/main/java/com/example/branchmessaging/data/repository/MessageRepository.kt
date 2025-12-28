@@ -25,6 +25,7 @@ class MessageRepository @Inject constructor(
             sessionManager.saveAuthToken(response.authToken)
             Result.success(Unit)
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
