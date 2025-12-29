@@ -4,27 +4,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    threadId: Int
+    threadId: Int,
+    viewModel: ChatViewModel = hiltViewModel()
 ) {
-
-    // Temporary static messages
-    val messages = listOf(
-        ChatMessageUiModel(
-            sender = "User",
-            body = "Hello"
-        ),
-        ChatMessageUiModel(
-            sender = "Agent",
-            body = "Hi, how can I help?"
-        )
-    )
 
     Scaffold(
         topBar = {
@@ -33,45 +27,84 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            MessageInput()
+            MessageInput { text ->
+                viewModel.sendMessage(text)
+            }
         }
     ) { padding ->
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(8.dp)
-        ) {
-            items(messages) { message ->
-                ChatMessageItem(message)
+        when {
+            viewModel.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            viewModel.errorMessage != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = viewModel.errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(8.dp)
+                ) {
+                    items(viewModel.messages) { message ->
+                        ChatMessageItem(
+                            sender = if (message.agentId != null) "Agent" else "User",
+                            body = message.body
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ChatMessageItem(message: ChatMessageUiModel) {
+private fun ChatMessageItem(
+    sender: String,
+    body: String
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
         Text(
-            text = message.sender,
+            text = sender,
             style = MaterialTheme.typography.labelSmall
         )
 
         Text(
-            text = message.body,
+            text = body,
             style = MaterialTheme.typography.bodyMedium
         )
     }
 }
 
 @Composable
-private fun MessageInput() {
-    var text by remember { mutableStateOf("") }
+private fun MessageInput(
+    onSend: (String) -> Unit
+) {
+    var text by remember { androidx.compose.runtime.mutableStateOf("") }
 
     Row(
         modifier = Modifier
@@ -89,7 +122,7 @@ private fun MessageInput() {
 
         Button(
             onClick = {
-                // send logic later
+                onSend(text)
                 text = ""
             }
         ) {
@@ -97,8 +130,3 @@ private fun MessageInput() {
         }
     }
 }
-
-data class ChatMessageUiModel(
-    val sender: String,
-    val body: String
-)
